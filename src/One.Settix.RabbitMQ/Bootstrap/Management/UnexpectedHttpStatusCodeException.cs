@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using System.Runtime.Serialization;
 
 namespace One.Settix.RabbitMQ.Bootstrap.Management
 {
@@ -28,7 +27,5 @@ namespace One.Settix.RabbitMQ.Bootstrap.Management
         public UnexpectedHttpStatusCodeException(string message) : base(message) { }
 
         public UnexpectedHttpStatusCodeException(string message, Exception inner) : base(message, inner) { }
-
-        protected UnexpectedHttpStatusCodeException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
 }

@@ -7,20 +7,20 @@ using System.Text.Json;
 
 namespace One.Settix.RabbitMQ.Publisher;
 
-public sealed class SettixRabbitMqPublisher
+public sealed class AsyncSettixRabbitMqPublisher
 {
     private readonly RabbitMqClusterOptions options;
-    private readonly PublisherChannelResolver _channelResolver;
-    private readonly ILogger<SettixRabbitMqPublisher> _logger;
+    private readonly AsyncPublisherChannelResolver _channelResolver;
+    private readonly ILogger<AsyncSettixRabbitMqPublisher> _logger;
 
-    public SettixRabbitMqPublisher(IOptionsMonitor<RabbitMqClusterOptions> optionsMonitor, PublisherChannelResolver channelResolver, ILogger<SettixRabbitMqPublisher> logger)
+    public AsyncSettixRabbitMqPublisher(IOptionsMonitor<RabbitMqClusterOptions> optionsMonitor, AsyncPublisherChannelResolver channelResolver, ILogger<AsyncSettixRabbitMqPublisher> logger)
     {
         options = optionsMonitor.CurrentValue; // TODO: Implement onChange event
         _channelResolver = channelResolver;
         _logger = logger;
     }
 
-    public void Publish(ConfigurationRequest message)
+    public async Task PublishAsync(ConfigurationRequest message)
     {
         string exchangeName = SettixRabbitMqNamer.GetExchangeName();
 
@@ -32,10 +32,10 @@ public sealed class SettixRabbitMqPublisher
             {
                 string routingKey = SettixRabbitMqNamer.GetRoutingKey(message.ServiceKey);
 
-                IModel exchangeModel = _channelResolver.Resolve(exchangeName, option, message.ServiceKey);
-                IBasicProperties props = BuildProps(exchangeModel, ConfigurationRequest.ContractId);
+                IChannel exchangeChannel = await _channelResolver.ResolveAsync(exchangeName, option, message.ServiceKey).ConfigureAwait(false);
+                BasicProperties props = BuildProps(ConfigurationRequest.ContractId);
 
-                exchangeModel.BasicPublish(exchangeName, routingKey, false, props, body);
+                await exchangeChannel.BasicPublishAsync(exchangeName, routingKey, false, props, body).ConfigureAwait(false);
 
                 _logger.LogInformation("Published message: {message}", message);
             }
@@ -51,7 +51,7 @@ public sealed class SettixRabbitMqPublisher
     /// </summary>
     /// <param name="message">The message that contains the response of the configured service</param>
     /// <param name="serviceKey">The key that will be used to construct the routing key <see cref="SettixRabbitMqNamer.GetRoutingKey"/> where the message will be published to</param>
-    public void Publish(ConfigurationResponse message, string serviceKey)
+    public async Task PublishAsync(ConfigurationResponse message, string serviceKey)
     {
         string exchangeName = SettixRabbitMqNamer.GetExchangeName();
 
@@ -63,10 +63,10 @@ public sealed class SettixRabbitMqPublisher
             {
                 string routingKey = SettixRabbitMqNamer.GetRoutingKey(serviceKey);
 
-                IModel exchangeModel = _channelResolver.Resolve(exchangeName, option, serviceKey);
-                IBasicProperties props = BuildProps(exchangeModel, ConfigurationResponse.ContractId);
+                IChannel exchangeChannel = await _channelResolver.ResolveAsync(exchangeName, option, serviceKey).ConfigureAwait(false);
+                BasicProperties props = BuildProps(ConfigurationResponse.ContractId);
 
-                exchangeModel.BasicPublish(exchangeName, routingKey, false, props, body);
+                await exchangeChannel.BasicPublishAsync(exchangeName, routingKey, false, props, body).ConfigureAwait(false);
 
                 _logger.LogInformation("Published response message: {@message}", message);
             }
@@ -81,7 +81,7 @@ public sealed class SettixRabbitMqPublisher
     /// Publishes the message that will remove the configuration from the configured service.
     /// </summary>
     /// <param name="message"></param>
-    public void Publish(RemoveConfigurationRequest message)
+    public async Task PublishAsync(RemoveConfigurationRequest message)
     {
         string exchangeName = SettixRabbitMqNamer.GetExchangeName();
 
@@ -93,10 +93,10 @@ public sealed class SettixRabbitMqPublisher
             {
                 string routingKey = SettixRabbitMqNamer.GetRoutingKey(message.ServiceKey);
 
-                IModel exchangeModel = _channelResolver.Resolve(exchangeName, option, message.ServiceKey);
-                IBasicProperties props = BuildProps(exchangeModel, RemoveConfigurationRequest.ContractId);
+                IChannel exchangeChannel = await _channelResolver.ResolveAsync(exchangeName, option, message.ServiceKey).ConfigureAwait(false);
+                BasicProperties props = BuildProps(RemoveConfigurationRequest.ContractId);
 
-                exchangeModel.BasicPublish(exchangeName, routingKey, false, props, body);
+                await exchangeChannel.BasicPublishAsync(exchangeName, routingKey, false, props, body).ConfigureAwait(false);
 
                 _logger.LogInformation("Published message: {message}", message);
             }
@@ -112,7 +112,7 @@ public sealed class SettixRabbitMqPublisher
     /// </summary>
     /// <param name="message">The message that contains the response of the configured service</param>
     /// <param name="serviceKey">The key that will be used to construct the routing key <see cref="SettixRabbitMqNamer.GetRoutingKey"/> where the message will be published to</param>
-    public void Publish(RemoveConfigurationResponse message, string serviceKey)
+    public async Task PublishAsync(RemoveConfigurationResponse message, string serviceKey)
     {
         string exchangeName = SettixRabbitMqNamer.GetExchangeName();
 
@@ -124,10 +124,10 @@ public sealed class SettixRabbitMqPublisher
             {
                 string routingKey = SettixRabbitMqNamer.GetRoutingKey(serviceKey);
 
-                IModel exchangeModel = _channelResolver.Resolve(exchangeName, option, serviceKey);
-                IBasicProperties props = BuildProps(exchangeModel, RemoveConfigurationResponse.ContractId);
+                IChannel exchangeChannel = await _channelResolver.ResolveAsync(exchangeName, option, serviceKey).ConfigureAwait(false);
+                BasicProperties props = BuildProps(RemoveConfigurationResponse.ContractId);
 
-                exchangeModel.BasicPublish(exchangeName, routingKey, false, props, body);
+                await exchangeChannel.BasicPublishAsync(exchangeName, routingKey, false, props, body).ConfigureAwait(false);
 
                 _logger.LogInformation("Published response message: {@message}", message);
             }
@@ -138,9 +138,9 @@ public sealed class SettixRabbitMqPublisher
         }
     }
 
-    private static IBasicProperties BuildProps(IModel exchangeModel, string contractId)
+    private static BasicProperties BuildProps(string contractId)
     {
-        IBasicProperties props = exchangeModel.CreateBasicProperties();
+        BasicProperties props = new BasicProperties();
         props.Persistent = true;
         props.Headers = new Dictionary<string, object>
         {

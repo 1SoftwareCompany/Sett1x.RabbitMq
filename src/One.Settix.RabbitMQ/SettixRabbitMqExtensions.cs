@@ -8,12 +8,11 @@ namespace One.Settix.RabbitMQ;
 
 public static class SettixRabbitMqExtensions
 {
-    // TODO: Rethink all lifecycles of the services
     internal static IServiceCollection AddSettixRabbitMqBase(this IServiceCollection services)
     {
-        services.AddSingleton<IRabbitMqConnectionFactory, RabbitMqConnectionFactory>();
+        services.AddSingleton<IAsyncRabbitMqConnectionFactory, AsyncRabbitMqConnectionFactory>();
         services.AddSingleton<SettixRabbitMqStartup>();
-        services.AddSingleton<ConnectionResolver>();
+        services.AddSingleton<AsyncConnectionResolver>();
 
         return services;
     }
@@ -27,8 +26,8 @@ public static class SettixRabbitMqExtensions
             configuration.GetRequiredSection("settix:rabbitmq:publisher").Bind(options.Clusters);
         });
 
-        services.AddSingleton<PublisherChannelResolver>();
-        services.AddSingleton<SettixRabbitMqPublisher>();
+        services.AddSingleton<AsyncPublisherChannelResolver>();
+        services.AddSingleton<AsyncSettixRabbitMqPublisher>();
 
         return services;
     }
@@ -42,7 +41,7 @@ public static class SettixRabbitMqExtensions
             configuration.GetRequiredSection("settix:rabbitmq:consumer").Bind(options);
         });
 
-        services.AddSingleton<ConsumerPerQueueChannelResolver>();
+        services.AddSingleton<AsyncConsumerPerQueueChannelResolver>();
         services.AddSingleton<SettixRabbitMqConsumerFactory>();
 
         return services;

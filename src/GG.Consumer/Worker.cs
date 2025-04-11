@@ -18,9 +18,9 @@ public class Worker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _rabbitMqStartup.Start("giService");
+        await _rabbitMqStartup.StartAsync("giService").ConfigureAwait(false);
 
-        _consumerFactory.CreateAndStartConsumer("giService", stoppingToken);
+        await _consumerFactory.CreateAndStartConsumerAsync("giService", stoppingToken).ConfigureAwait(false);
 
         while (!stoppingToken.IsCancellationRequested)
         {

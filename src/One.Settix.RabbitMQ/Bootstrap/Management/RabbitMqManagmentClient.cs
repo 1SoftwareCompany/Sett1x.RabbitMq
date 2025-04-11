@@ -78,73 +78,73 @@ namespace One.Settix.RabbitMQ.Bootstrap.Management
             }
         }
 
-        internal Vhost CreateVirtualHost(string virtualHostName)
+        internal async Task<Vhost> CreateVirtualHostAsync(string virtualHostName)
         {
             if (string.IsNullOrEmpty(virtualHostName)) throw new ArgumentException("virtualHostName is null or empty");
 
-            Put($"vhosts/{virtualHostName}");
+            await PutAsync($"vhosts/{virtualHostName}").ConfigureAwait(false);
 
-            return GetVhost(virtualHostName);
+            return await GetVhostAsync(virtualHostName).ConfigureAwait(false);
         }
 
-        internal Vhost GetVhost(string vhostName)
+        internal Task<Vhost> GetVhostAsync(string vhostName)
         {
             string vhost = SanitiseVhostName(vhostName);
-            return Get<Vhost>($"vhosts/{vhost}");
+            return GetAsync<Vhost>($"vhosts/{vhost}");
         }
 
-        internal IEnumerable<Vhost> GetVHosts()
+        internal Task<IEnumerable<Vhost>> GetVHostsAsync()
         {
-            return Get<IEnumerable<Vhost>>("vhosts");
+            return GetAsync<IEnumerable<Vhost>>("vhosts");
         }
 
-        internal void CreatePermission(PermissionInfo permissionInfo)
+        internal async Task CreatePermissionAsync(PermissionInfo permissionInfo)
         {
             if (permissionInfo is null) throw new ArgumentNullException("permissionInfo");
 
             string vhost = SanitiseVhostName(permissionInfo.GetVirtualHostName());
             string username = permissionInfo.GetUserName();
-            Put($"permissions/{vhost}/{username}", permissionInfo);
+            await PutAsync($"permissions/{vhost}/{username}", permissionInfo).ConfigureAwait(false);
         }
 
-        internal void CreateFederatedExchange(FederatedExchange exchange, string ownerVhost)
+        internal async Task CreateFederatedExchangeAsync(FederatedExchange exchange, string ownerVhost)
         {
-            Put($"parameters/federation-upstream/{ownerVhost}/{exchange.Name}", exchange);
+            await PutAsync($"parameters/federation-upstream/{ownerVhost}/{exchange.Name}", exchange).ConfigureAwait(false);
         }
 
-        internal void CreatePolicy(Policy policy, string ownerVhost)
+        internal async Task CreatePolicyAsync(Policy policy, string ownerVhost)
         {
-            Put($"policies/{ownerVhost}/{policy.Name}", policy);
+            await PutAsync($"policies/{ownerVhost}/{policy.Name}", policy).ConfigureAwait(false);
         }
 
-        internal IEnumerable<User> GetUsers()
+        internal Task<IEnumerable<User>> GetUsersAsync()
         {
-            return Get<IEnumerable<User>>("users");
+            return GetAsync<IEnumerable<User>>("users");
         }
 
-        internal User GetUser(string userName)
+        internal Task<User> GetUserAsync(string userName)
         {
-            return Get<User>(string.Format("users/{0}", userName));
+            return GetAsync<User>(string.Format("users/{0}", userName));
         }
 
-        internal User CreateUser(UserInfo userInfo)
+        internal async Task<User> CreateUserAsync(UserInfo userInfo)
         {
             if (userInfo is null) throw new ArgumentNullException("userInfo");
 
             string username = userInfo.GetName();
 
-            Put($"users/{username}", userInfo);
+            await PutAsync($"users/{username}", userInfo).ConfigureAwait(false);
 
-            return GetUser(userInfo.GetName());
+            return await GetUserAsync(userInfo.GetName()).ConfigureAwait(false);
         }
 
-        private void Put(string path)
+        private async Task PutAsync(string path)
         {
             var request = CreateRequestForPath(path);
             request.Method = "PUT";
             request.ContentType = "application/json";
 
-            using (var response = (HttpWebResponse)request.GetResponse())
+            using (var response = (HttpWebResponse)await request.GetResponseAsync().ConfigureAwait(false))
             {
                 // The "Cowboy" server in 3.7.0's Management Client returns 201 Created.
                 // "MochiWeb/1.1 WebMachine/1.10.0 (never breaks eye contact)" in 3.6.1 and previous return 204 No Content
@@ -159,14 +159,14 @@ namespace One.Settix.RabbitMQ.Bootstrap.Management
             }
         }
 
-        private void Put<T>(string path, T item)
+        private async Task PutAsync<T>(string path, T item)
         {
             var request = CreateRequestForPath(path);
             request.Method = "PUT";
 
-            InsertRequestBody(request, item);
+            await InsertRequestBodyAsync(request, item).ConfigureAwait(false);
 
-            using (var response = (HttpWebResponse)request.GetResponse())
+            using (var response = (HttpWebResponse)await request.GetResponseAsync().ConfigureAwait(false))
             {
                 // The "Cowboy" server in 3.7.0's Management Client returns 201 Created.
                 // "MochiWeb/1.1 WebMachine/1.10.0 (never breaks eye contact)" in 3.6.1 and previous return 204 No Content
@@ -181,11 +181,11 @@ namespace One.Settix.RabbitMQ.Bootstrap.Management
             }
         }
 
-        private T Get<T>(string path, params object[] queryObjects)
+        private async Task<T> GetAsync<T>(string path, params object[] queryObjects)
         {
             var request = CreateRequestForPath(path, queryObjects);
 
-            using (var response = (HttpWebResponse)request.GetResponse())
+            using (var response = (HttpWebResponse)await request.GetResponseAsync().ConfigureAwait(false))
             {
                 if (response.StatusCode != HttpStatusCode.OK)
                 {
@@ -195,12 +195,12 @@ namespace One.Settix.RabbitMQ.Bootstrap.Management
             }
         }
 
-        private void InsertRequestBody<T>(HttpWebRequest request, T item)
+        private async Task InsertRequestBodyAsync<T>(HttpWebRequest request, T item)
         {
             request.ContentType = "application/json";
 
             var body = JsonSerializer.Serialize(item, settings);
-            using (var requestStream = request.GetRequestStream())
+            using (var requestStream = await request.GetRequestStreamAsync().ConfigureAwait(false))
             using (var writer = new StreamWriter(requestStream))
             {
                 writer.Write(body);
